@@ -283,7 +283,7 @@ class VS(Query):
     """
     _PAYLOAD_START = "VS"
 
-    def __init__(self, value, parameter, address=0, parameter_instance=1):
+    def __init__(self, value, parameter, address, parameter_instance=1):
         """
         Create a query to set a parameter value.
         :param value: int or float
@@ -588,7 +588,7 @@ class MeComCommon:
         # return the query with response
         return vr
 
-    def _set(self, value, parameter_name=None, parameter_id=None, *args, **kwargs):
+    def _set(self, value, parameter_name=None, parameter_id=None, address=None, *args, **kwargs):
         """
         Get a query object for a VS command.
         :param value:
@@ -598,13 +598,10 @@ class MeComCommon:
         :param kwargs:
         :return:
         """
-
         # search in DataFrame returns a dict
         parameter = self._find_parameter(parameter_name, parameter_id)
-
         # execute query
-        vs = self._execute(VS(value=value, parameter=parameter, *args, **kwargs))
-
+        vs = self._execute(VS(value=value, parameter=parameter, address=address, *args, **kwargs))
         # return the query with response
         return vs
 
@@ -656,8 +653,17 @@ class MeComCommon:
         vr = self._get_raw(parameter_id=parameter_id, parameter_format=parameter_format, *args, **kwargs)
 
         return vr.RESPONSE.PAYLOAD[0]
+    
+    def broadcast_command(self, parameter_name=None, value=None, parameter_id = None, *args, **kwargs):
+        # search in DataFrame returns a dict
+        parameter = self._find_parameter(parameter_name, parameter_id)
+        vs = VS(value=value, parameter=parameter, *args, **kwargs)
+        vs.ADDRESS = 0
+        # execute query
+        return self._execute(vs)
 
-    def set_parameter(self, value, parameter_name=None, parameter_id=None, *args, **kwargs):
+
+    def set_parameter(self, value, parameter_name=None, parameter_id=None, address=None, *args, **kwargs):
         """
         Set the new value of a parameter given by name or id.
         Returns success.
@@ -669,7 +675,7 @@ class MeComCommon:
         :return: bool
         """
         # get the query object
-        vs = self._set(value=value, parameter_id=parameter_id, parameter_name=parameter_name, *args, **kwargs)
+        vs = self._set(value=value, parameter_id=parameter_id, parameter_name=parameter_name, address=address, *args, **kwargs)
 
         # check if value setting has succeeded
         #
@@ -721,8 +727,20 @@ class MeComCommon:
         info = self._execute(IF(*args, **kwargs))
         return info.RESPONSE.PAYLOAD
 
+    def identify(self, *args, **kwargs):
+        """
+        Get the device address.
+        Returns success and device address as int.
+        :param args:
+        :param kwargs:
+        :return: [bool, int]
+        """
+        # query device address
+        address = self.get_parameter(parameter_name="Device Address", *args, **kwargs)
 
-    
+        # return address and success
+        return address
+   
     # returns device address
     identify = partialmethod(get_parameter, parameter_name="Device Address")
     """
@@ -885,10 +903,9 @@ class MeComSerial(MeComCommon):
         # initialize serial connection
         self.ser = Serial(port=serialport, timeout=timeout, write_timeout=timeout, baudrate=baudrate)
 
-        # start protocol thread
-        # self.protocol = ReaderThread(serial_instance=self.ser, protocol_factory=MePacket)
-        # self.receiver = self.protocol.__enter__()
-
+        #initialize the the array that holds the address of the devices
+        self.device_addresses = []
+        
         # initialize parameters
         self.PARAMETERS = ParameterList(metype)
 
@@ -897,6 +914,16 @@ class MeComSerial(MeComCommon):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ser.__exit__(exc_type, exc_val, exc_tb)
 
+    def get_device_addresses(self):
+        """scans the bus for devices and populates the device_addresses array"""
+        for i in range(1,254):
+            try:
+                response = self.get_parameter(parameter_name="Device Address", address=i)
+                if response:
+                    self.device_addresses.append(i)
+            except ResponseException:
+                continue             
+    
     def __enter__(self):
         return self
 
@@ -956,14 +983,13 @@ class MeComSerial(MeComCommon):
         return query
 
 
-class MeCom(MeComSerial):
-    """
-    Deprecated. Use MeComSerial instead.
-    """
-    pass
-
 
 if __name__ == "__main__":
+    #as of 1/23 use get_device_address() to fetch the address of all devices on the bus
+    #i've updated set_parameter() to take an address in as well
+    #if no address is specified, address=0 and the command will be broadcast to all devices on the bus
+    #TODO: update get_parameter
+    
     with MeComSerial("/dev/ttyUSB0") as mc:
         # # which device are we talking to?
         address = mc.identify()
