@@ -10,10 +10,11 @@ import socket
 
 # more special pip packages
 from serial import Serial
+from serial import SerialException
 
 # from this package
-from .exceptions import ResponseException, WrongResponseSequence, WrongChecksum, ResponseTimeout, UnknownParameter, UnknownMeComType
-from .commands import TEC_PARAMETERS, LDD_PARAMETERS, LDD_1321_PARAMETERS, ERRORS
+from exceptions import ResponseException, WrongResponseSequence, WrongChecksum, ResponseTimeout, UnknownParameter, UnknownMeComType
+from commands import TEC_PARAMETERS, LDD_PARAMETERS, LDD_1321_PARAMETERS, ERRORS
 
 
 class Parameter(object):
@@ -982,7 +983,29 @@ class MeComSerial(MeComCommon):
 
         return query
 
+def connect():
+        # open session
+        start_index = 1
+        base_name = "COM"
+        devices = []
 
+        scan_start_time = time.time()
+        while True:
+            for i in range(start_index, 256):
+                try:
+                    devices.append(MeComSerial(serialport=base_name + str(i)))
+                    print(f"found device on {base_name + str(i)}")
+                except SerialException:
+                    pass
+            if time.time() - scan_start_time >= 30 or len(devices) == 2:
+                break
+            time.sleep(0.1) # 100 ms wait time between each scan attempt
+
+        if len(devices) == 0:
+            raise ConnectionError("Could not find any devices on the bus")
+        if len(devices) == 1:
+            raise ConnectionError("Could not find both devices on the bus")
+        return devices
 
 if __name__ == "__main__":
     #as of 1/23 use get_device_address() to fetch the address of all devices on the bus
@@ -990,39 +1013,51 @@ if __name__ == "__main__":
     #if no address is specified, address=0 and the command will be broadcast to all devices on the bus
     #TODO: update get_parameter
     
-    with MeComSerial("/dev/ttyUSB0") as mc:
-        # # which device are we talking to?
-        address = mc.identify()
-        status = mc.status()
-        print("connected to device: {}, status: {}".format(address, status))
+    #connect to both devices
+    base_name = "COM"
+    scan_start_time = time.time()
+    #connect to the devices
+    devices = connect()
+    print(f'devices: {devices}')
+    
+    # which device are we talking to?
+    print("querying device 1")
+    address = devices[0].identify()
+    status = devices[0].status()
+    print("connected to device: {}, status: {}".format(address, status))
+    
+    print("querying device 2")
+    address = devices[1].identify()
+    status = devices[1].status()
+    print("connected to device: {}, status: {}".format(address, status))
+    
+    # get object temperature
+    temp = mc.get_parameter(parameter_name="Object Temperature", address=address)
+    print("query for object temperature, measured temperature {}C".format(temp))
 
-        # get object temperature
-        temp = mc.get_parameter(parameter_name="Object Temperature", address=address)
-        print("query for object temperature, measured temperature {}C".format(temp))
+    # is the loop stable?
+    stable_id = mc.get_parameter(parameter_name="Temperature is Stable", address=address)
+    if stable_id == 0:
+        stable = "temperature regulation is not active"
+    elif stable_id == 1:
+        stable = "is not stable"
+    elif stable_id == 2:
+        stable = "is stable"
+    else:
+        stable = "state is unknown"
+    print("query for loop stability, loop {}".format(stable))
 
-        # is the loop stable?
-        stable_id = mc.get_parameter(parameter_name="Temperature is Stable", address=address)
-        if stable_id == 0:
-            stable = "temperature regulation is not active"
-        elif stable_id == 1:
-            stable = "is not stable"
-        elif stable_id == 2:
-            stable = "is stable"
-        else:
-            stable = "state is unknown"
-        print("query for loop stability, loop {}".format(stable))
+    # setting a new device address and get again
+    # new_address = 6
+    # value_set = mc.set_parameter(value=new_address, parameter_name="Device Address")
+    # print("setting device address to {}".format(value_set))
+    #
+    # # get device address again
+    # address = mc.identify()
+    # print("connected to device: {}".format(address))
 
-        # # setting a new device address and get again
-        # new_address = 6
-        # value_set = mc.set_parameter(value=new_address, parameter_name="Device Address")
-        # print("setting device address to {}".format(value_set))
-        #
-        # # get device address again
-        # address = mc.identify()
-        # print("connected to device: {}".format(address))
+    # set target temperature to 21C
+    # success = mc.set_parameter(value=20.0, parameter_id=3000)
+    # print(success)
 
-        # set target temperature to 21C
-        # success = mc.set_parameter(value=20.0, parameter_id=3000)
-        # print(success)
-
-        print("leaving with-statement, connection will be closed")
+    print("leaving with-statement, connection will be closed")
