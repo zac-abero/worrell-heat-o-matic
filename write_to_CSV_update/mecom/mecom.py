@@ -10,10 +10,11 @@ import socket
 
 # more special pip packages
 from serial import Serial
+from serial import SerialException
 
 # from this package
-from .exceptions import ResponseException, WrongResponseSequence, WrongChecksum, ResponseTimeout, UnknownParameter, UnknownMeComType
-from .commands import TEC_PARAMETERS, LDD_PARAMETERS, LDD_1321_PARAMETERS, ERRORS
+from exceptions import ResponseException, WrongResponseSequence, WrongChecksum, ResponseTimeout, UnknownParameter, UnknownMeComType
+from commands import TEC_PARAMETERS, LDD_PARAMETERS, LDD_1321_PARAMETERS, ERRORS
 
 
 class Parameter(object):
@@ -588,7 +589,7 @@ class MeComCommon:
         # return the query with response
         return vr
 
-    def _set(self, value, parameter_name=None, parameter_id=None, address=None, *args, **kwargs):
+    def _set(self, value, parameter_name=None, parameter_id=None, *args, **kwargs):
         """
         Get a query object for a VS command.
         :param value:
@@ -601,7 +602,7 @@ class MeComCommon:
         # search in DataFrame returns a dict
         parameter = self._find_parameter(parameter_name, parameter_id)
         # execute query
-        vs = self._execute(VS(value=value, parameter=parameter, address=address, *args, **kwargs))
+        vs = self._execute(VS(value=value, parameter=parameter, *args, **kwargs))
         # return the query with response
         return vs
 
@@ -902,9 +903,6 @@ class MeComSerial(MeComCommon):
         """
         # initialize serial connection
         self.ser = Serial(port=serialport, timeout=timeout, write_timeout=timeout, baudrate=baudrate)
-
-        #initialize the the array that holds the address of the devices
-        self.device_addresses = []
         
         # initialize parameters
         self.PARAMETERS = ParameterList(metype)
@@ -914,16 +912,6 @@ class MeComSerial(MeComCommon):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ser.__exit__(exc_type, exc_val, exc_tb)
 
-    def get_device_addresses(self):
-        """scans the bus for devices and populates the device_addresses array"""
-        for i in range(1,254):
-            try:
-                response = self.get_parameter(parameter_name="Device Address", address=i)
-                if response:
-                    self.device_addresses.append(i)
-            except ResponseException:
-                continue             
-    
     def __enter__(self):
         return self
 
@@ -982,47 +970,163 @@ class MeComSerial(MeComCommon):
 
         return query
 
+from serial.serialutil import PortNotOpenError
 
-
-if __name__ == "__main__":
-    #as of 1/23 use get_device_address() to fetch the address of all devices on the bus
-    #i've updated set_parameter() to take an address in as well
-    #if no address is specified, address=0 and the command will be broadcast to all devices on the bus
-    #TODO: update get_parameter
+# default queries from command table below
+DEFAULT_QUERIES = [
+    "loop status",
+    "object temperature",
+    "target object temperature",
+    "output current",
+    "output voltage"
+    "device status"
     
-    with MeComSerial("/dev/ttyUSB0") as mc:
-        # # which device are we talking to?
-        address = mc.identify()
-        status = mc.status()
-        print("connected to device: {}, status: {}".format(address, status))
+]
 
-        # get object temperature
-        temp = mc.get_parameter(parameter_name="Object Temperature", address=address)
-        print("query for object temperature, measured temperature {}C".format(temp))
+# syntax
+# { display_name: [parameter_id, unit], }
+COMMAND_TABLE = {
+    "loop status": [1200, ""],
+    "object temperature": [1000, "degC"],
+    "target object temperature": [1010, "degC"],
+    "output current": [1020, "A"],
+    "output voltage": [1021, "V"],
+    "sink temperature": [1001, "degC"],
+    "ramp temperature": [1011, "degC"],
+    "device status": [1201, "1 or 0"]
+}
 
-        # is the loop stable?
-        stable_id = mc.get_parameter(parameter_name="Temperature is Stable", address=address)
-        if stable_id == 0:
-            stable = "temperature regulation is not active"
-        elif stable_id == 1:
-            stable = "is not stable"
-        elif stable_id == 2:
-            stable = "is stable"
+class tec_controller(object):
+    """
+    Controlling TEC devices via serial.
+    """
+
+    def _tearDown(self):
+        self.session().stop()
+
+    def __init__(self, port=None, scan_timeout=10, channel=[1,2], queries=DEFAULT_QUERIES, *args, **kwars):
+        self.channel = channel
+        self.port = port
+        self.scan_timeout = scan_timeout
+        self.queries = queries
+        self._session = []
+        self.addresses = []
+        self._connect()
+    
+    # COMMENTS AS OF 3/6
+    # the device IDs are static, it's the COM ports that change
+    # this means that we can just reference them in the service software
+    # if we know the device IDs, then once we find the first operating COM port, and query the connected device
+    # then, just query the second device once we find the COM port, 
+    # depending on which was the first on that connected
+    # when we have connected to just one COM port, identify() works
+    # this means that the current communication protocol can't work if there are multiple devices connected to the same bus
+    # (just in terms of the initial identify query)
+    # so the crux of it is: how do you identify devices without broadcasting the initial command
+    # option 1: figure out device IDs in service software, just use those
+    # option 2: geek out (in a bad way)
+    
+    def _connect(self):
+        # open session
+        if self.port is not None:
+            self._session = MeComSerial(serialport=self.port)
         else:
-            stable = "state is unknown"
-        print("query for loop stability, loop {}".format(stable))
+            start_index = 1
+            base_name = "COM"
 
-        # # setting a new device address and get again
-        # new_address = 6
-        # value_set = mc.set_parameter(value=new_address, parameter_name="Device Address")
-        # print("setting device address to {}".format(value_set))
-        #
-        # # get device address again
-        # address = mc.identify()
-        # print("connected to device: {}".format(address))
+            scan_start_time = time.time()
+            while True:
+                for i in range(start_index, 256 + 1):
+                    try:
+                        self._session.append(MeComSerial(serialport=base_name + str(i)))
+                        if len(self._session) == 1:
+                            self.addresses.append(self._session[0].identify())
+                            print(f'found device on {base_name + str(i)} with address {self.addresses[0]}')
+                            
+                    except SerialException:
+                        pass
+                if self._session is not None or (time.time() - scan_start_time) >= self.scan_timeout:
+                    break
+                time.sleep(0.1) # 100 ms wait time between each scan attempt
+           
+            print(f"found {len(self._session)} devices on the bus")
+            
+            if self._session is None:
+                 raise PortNotOpenError
+             
+        # get device address
+        for controller in self._session:
+            self.addresses.append(controller.identify())
 
-        # set target temperature to 21C
-        # success = mc.set_parameter(value=20.0, parameter_id=3000)
-        # print(success)
+    def session(self):
+        if self._session is None:
+            self._connect()
+        return self._session
 
-        print("leaving with-statement, connection will be closed")
+    def get_data(self):
+        data = {}
+        
+        for description in self.queries:
+            id, unit = COMMAND_TABLE[description]
+            try:
+                value = self.session().get_parameter(parameter_id=id, address=self.address, parameter_instance=self.channel[0])
+                data.update({description: (value, unit)})
+            except (ResponseException, WrongChecksum) as ex:
+                self.session().stop()
+                self._session = None
+        return data
+    
+    def get_param(self, param_id):
+        try:
+            value = self.session().get_parameter(parameter_id=param_id, address=self.address, parameter_instance=self.channel[0])
+        except (ResponseException, WrongChecksum) as ex:
+            self.session().stop()
+            self._session = None
+        return value
+    
+if __name__ == "__main__":    
+   
+        
+    tecs = tec_controller()
+    
+    """# which device are we talking to?
+    print("querying device 1")
+    address = devices[0].identify()
+    status = devices[0].status()
+    print("connected to device: {}, status: {}".format(address, status))
+    
+    print("querying device 2")
+    address = devices[1].identify(address)
+    status = devices[1].status()
+    print("connected to device: {}, status: {}".format(address, status))
+    
+    # get object temperature
+    temp = mc.get_parameter(parameter_name="Object Temperature", address=address)
+    print("query for object temperature, measured temperature {}C".format(temp))
+
+    # is the loop stable?
+    stable_id = mc.get_parameter(parameter_name="Temperature is Stable", address=address)
+    if stable_id == 0:
+        stable = "temperature regulation is not active"
+    elif stable_id == 1:
+        stable = "is not stable"
+    elif stable_id == 2:
+        stable = "is stable"
+    else:
+        stable = "state is unknown"
+    print("query for loop stability, loop {}".format(stable))
+    """
+    # setting a new device address and get again
+    # new_address = 6
+    # value_set = mc.set_parameter(value=new_address, parameter_name="Device Address")
+    # print("setting device address to {}".format(value_set))
+    #
+    # # get device address again
+    # address = mc.identify()
+    # print("connected to device: {}".format(address))
+
+    # set target temperature to 21C
+    # success = mc.set_parameter(value=20.0, parameter_id=3000)
+    # print(success)
+
+    print("leaving with-statement, connection will be closed")
