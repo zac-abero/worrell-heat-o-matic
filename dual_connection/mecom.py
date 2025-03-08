@@ -1041,6 +1041,9 @@ class tec_controller(object):
     # another helpful thing would be to try and ramp device #2 and see what happens. 
     # but basically I don't know why the second device can't be reached, 
     # and I suspect it to be a physcial problem
+    # ******ALSO*******
+    # check that both devices don't have the same address (test seperately)
+    # just tested this ^^^, and they do not have the same address. Double check when testing seperately though
     
     def find_D2_id(self):
         COM = MeComSerial("COM"+str(7))
@@ -1105,6 +1108,14 @@ class tec_controller(object):
                  raise PortNotOpenError
             else: 
                 self.find_addresses()
+            #now try and reconnct to #2 
+            try: 
+                print(f'querying if a device exists with address {2}')
+                response = self._session.identify(address=2)
+                print(f'address: {response}')
+            except ResponseTimeout:
+                print("couldn't reconnect to device 2")
+            
     
     def find_addresses(self):
        for i in range(1,255):
@@ -1113,7 +1124,13 @@ class tec_controller(object):
                 response = self._session.identify(address=i)
                 print(f'address: {response}')
                 self.addresses.append(response)
+                print("status: ")
                 print(self._session.status(address = self.addresses[0]))
+                print("renaming device 2 to address 6")
+                print(self._session.set_parameter(value = 6, parameter_name="Device Address", address = self.addresses[0]))
+                print("confirming new address")
+                print(self._session.get_parameter(parameter_name="Device Address", address = 6))
+                break
             except ResponseTimeout:
                 pass
             #wait for a bit
