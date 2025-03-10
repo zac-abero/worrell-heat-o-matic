@@ -1108,37 +1108,28 @@ class tec_controller(object):
                  raise PortNotOpenError
             else: 
                 self.find_addresses()
-            #now try and reconnct to #2 
-            try: 
-                print(f'querying if a device exists with address {2}')
-                response = self._session.identify(address=2)
-                print(f'address: {response}')
-            except ResponseTimeout:
-                print("couldn't reconnect to device 2")
             
+            print(f'connected to devices: {self.addresses}')
     
     def find_addresses(self):
        for i in range(1,255):
             try: 
+                if len(self.addresses) == 2:
+                    break #connected to 2 devices, no need to keep scanning
+                
                 print(f'querying if a device exists with address {i}')
                 response = self._session.identify(address=i)
                 print(f'address: {response}')
                 self.addresses.append(response)
+                
                 print("status: ")
                 print(self._session.status(address = self.addresses[0]))
-                print("renaming device 2 to address 6")
-                print(self._session.set_parameter(value = 6, parameter_name="Device Address", address = self.addresses[0]))
-                print("confirming new address")
-                print(self._session.get_parameter(parameter_name="Device Address", address = 6))
-                break
+                
             except ResponseTimeout:
                 pass
             #wait for a bit
             time.sleep(0.1) 
         
-    def get_addresses(self):
-        return self.addresses
-    
     def session(self):
         if self._session is None:
             self._connect()
