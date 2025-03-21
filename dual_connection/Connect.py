@@ -53,10 +53,11 @@ class tec_controller(object):
             i+=1
             
     def find_addresses(self):
-        # best to store tuples, so you can easily make queries
-        # (serial object, device_id)
+        # best to store tuples in a dict
+        # (key, value) = (device_address, (serial_object, device_name))
         for port in self.session:
             self.find_addresses_on_port(port)
+        print(f'found devices: {self.addresses}')
         
     def find_addresses_on_port(self, port):
         for i in range(1,255):
@@ -64,7 +65,7 @@ class tec_controller(object):
                 print(f'querying if a device exists with address {i}')
                 response = port.identify(address=i)
                 print(f'address: {response}')
-                self.addresses[i] = port
+                self.addresses[i] = (port, self.get_device_type(i, port))
                 break
             except ResponseTimeout:
                 pass
@@ -89,11 +90,13 @@ class tec_controller(object):
     #             self.session().stop()
     #             self.session = None
     #     return data
-    def get_device_type(self, device_id):
-        port = self.addresses[device_id]
+    
+    def get_device_type(self, device_id, port=None):
+        if port is None:
+            port = self.addresses[device_id][0]
         name = port.get_parameter(parameter_name = "Device Type", address=device_id, parameter_instance=self.channel[0])
-        print(f'device {name} found on port {port} with address {device_id}')
-        
+        return name
+            
     def set_enable(self, device_id, enable=True):
         """
         Enable or disable control loop
@@ -101,11 +104,10 @@ class tec_controller(object):
         :param channel: int
         :return:
         """
-        port = self.addresses[device_id]
+        port = self.addresses[device_id][0]
         value, description = (1, "on") if enable else (0, "off")
 
-        if device_id == 1:
-            #fetch tuple of (serial_object, device_address)
+        if self.addresses[device_id][1] == 1123:
             port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[0])
             port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[1])
         else:
@@ -120,12 +122,10 @@ class tec_controller(object):
         :param channel: int
         :return:
         """
-        port = self.addresses[device_id]
+        port = self.addresses[device_id][0]
         value = float(value)
         print(f'setting temperature to {value}')
-        #TODO: make this a dynamic function (use get_device_type)
-        if device_id == 1:
-            #fetch tuple of (serial_object, device_address)
+        if self.addresses[device_id][1] == 1123:
             print(port.set_parameter(parameter_id=3000, value=value, address= device_id, parameter_instance=self.channel[0]))
             port.set_parameter(parameter_id=3000, value=value, address=device_id, parameter_instance=self.channel[1])
         else:

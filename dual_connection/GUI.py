@@ -6,7 +6,7 @@ def start_ramp():
     temp1123 = temp_input1.get()
     temp1090 = temp_input2.get()
     
-    #query which device is connected to which port
+    #query which device is connected to which id
     device1 = connection.get_device_type(1)
     device2 = connection.get_device_type(2)
     
