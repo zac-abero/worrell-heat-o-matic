@@ -1011,129 +1011,65 @@ class tec_controller(object):
         self.port = port
         self.scan_timeout = scan_timeout
         self.queries = queries
-        self._session = None
+        self.session = []
         self.addresses = []
         self._connect()
     
-    # COMMENTS AS OF 3/8
     # FLOW:
-    # 1. find COM port to connect to 
-    # 2. make MeComSerial object
-    # 3. query identify() from 1-254 to find the devices on the bus
-    #    3b. use find_addresses() for this
-    # 
-    # TO DEBUG:
-    # right now, it only connects to device address=2
-    # I have scanned all COM ports, and tested all device IDs on all viable COM ports, with no avail 
-    # 
-    # NEXT STEPS:
-    # need to test each device individually, without the 2ch RS485 to USB
-    # if both devices connect seperately with the current code, 
-    # then it's the something with the combined system - IE wiring or something physical
-    #
-    # OTHER NOTES: 
-    # the only thing I can think of that could be going wrong that isn't physical is that the MeComSerial Class 
-    # can't handle 2 devices on one serial port. 
-    # This i am close to ruling out though, because when testing I skipped querying address=2, and still
-    # no other devices were present
-    # maybe because of how it is wired, all commands are sent to the first device, and never reach the second?
-    # 
-    # another helpful thing would be to try and ramp device #2 and see what happens. 
-    # but basically I don't know why the second device can't be reached, 
-    # and I suspect it to be a physcial problem
-    # ******ALSO*******
-    # check that both devices don't have the same address (test seperately)
-    # just tested this ^^^, and they do not have the same address. Double check when testing seperately though
-    
-    def find_D2_id(self):
-        COM = MeComSerial("COM"+str(7))
-        #print("querying if a device exists with address 0")
-        #response = COM.identify(address = 0)
-        #print(f'address: {response}')
-        
-        print(f"connected to {COM}")
-        for i in range(1,255):
-            try: 
-                print(f'querying if a device exists with address {i}')
-                response = COM.identify(address=i)
-                print(f'address: {response}')
-            except ResponseTimeout:
-                pass
-            #wait for a bit
-            time.sleep(0.1)
-    
+    # 1. find COM ports to connect to 
+    # 2. query identify() twice, once on each COM port, to find the devices on the bus
+   
     def query_COM_ports(self):
         #querying COM ports on the computer
         #to be sure that I am not missing any devices
-        
-        for i in range (1,257):
+        i=1
+        while len(self.session) < 2 and i < 257:
             try:
-                print(f'trying port COM{i}')
-                COM = MeComSerial("COM"+str(i))
+                print(f'trying port COM{i}')               
+                self.session.append(MeComSerial("COM"+str(i)))       
                 print(f'found device on port COM{i}')
-                
             except SerialException:
                 pass
             #wait for a bit
             time.sleep(0.1)
+            i+=1
     
     def _connect(self):
         # open session
         if self.port is not None:
-            self._session = MeComSerial(serialport=self.port)
+            self.session = MeComSerial(serialport=self.port)
         else:
-            start_index = 1
-            base_name = "COM"
-           
-            #self.query_COM_ports()
-            #return
-            #self.find_D2_id()
-            #return
-            
-            scan_start_time = time.time()
-        
-            while True:
-                for i in range(start_index, 257):
-                    try:
-                        self._session = MeComSerial(serialport=base_name + str(i))
-                        print(f'connected to {base_name + str(i)}')
-                        break
-                    except SerialException:
-                        pass
-                if self._session is not None or (time.time() - scan_start_time) >= self.scan_timeout:
-                    break
-                time.sleep(0.1) # 100 ms wait time between each scan attempt
-                       
-            if self._session is None:
+            self.query_COM_ports()
+                        
+            if len(self.session) == 0:
                  raise PortNotOpenError
             else: 
-                self.find_addresses()
-            
+                self.find_addresses()   
             print(f'connected to devices: {self.addresses}')
     
-    def find_addresses(self):
-       for i in range(1,255):
-            try: 
-                if len(self.addresses) == 2:
-                    break #connected to 2 devices, no need to keep scanning
-                
+    def find_addresses_on_port(self, port):
+        for i in range(1,255):
+            try:                     
                 print(f'querying if a device exists with address {i}')
-                response = self._session.identify(address=i)
+                response = port.identify(address=i)
                 print(f'address: {response}')
-                self.addresses.append(response)
-                
-                print("status: ")
-                print(self._session.status(address = self.addresses[0]))
-                
+                self.addresses.append(port.identify(address=i))
+                break
+                #print("status: ")
+                #print(port.status(address = self.addresses[i]))
             except ResponseTimeout:
                 pass
             #wait for a bit
             time.sleep(0.1) 
         
+    def find_addresses(self):
+        for port in self.session:
+            self.find_addresses_on_port(port)
+        
     def session(self):
-        if self._session is None:
+        if self.session is None:
             self._connect()
-        return self._session
+        return self.session
 
     def get_data(self):
         data = {}
@@ -1145,7 +1081,7 @@ class tec_controller(object):
                 data.update({description: (value, unit)})
             except (ResponseException, WrongChecksum) as ex:
                 self.session().stop()
-                self._session = None
+                self.session = None
         return data
     
     def get_param(self, param_id):
@@ -1153,7 +1089,7 @@ class tec_controller(object):
             value = self.session().get_parameter(parameter_id=param_id, address=self.address, parameter_instance=self.channel[0])
         except (ResponseException, WrongChecksum) as ex:
             self.session().stop()
-            self._session = None
+            self.session = None
         return value
     
 if __name__ == "__main__":    

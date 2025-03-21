@@ -5,6 +5,7 @@ https://www.meerstetter.ch/category/35-latest-communication-protocols
 
 
 TEC_PARAMETERS = [
+    {"id": 100, "name": "Device Type", "format": "INT32"},
     {"id": 104, "name": "Device Status", "format": "INT32"},
     {"id": 105, "name": "Error Number", "format": "INT32"},
     {"id": 108, "name": "Save Data to Flash", "format": "INT32"},
