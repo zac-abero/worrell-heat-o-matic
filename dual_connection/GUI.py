@@ -12,13 +12,13 @@ def start_ramp():
     
     if device1== 1123:
         connection.set_temp(temp1123, 1)
-        connection.set_temp(temp1090, 2) #uncomment this line to enable the 1090 
+        connection.set_temp(temp1090, 2) 
     else:
         connection.set_temp(temp1090, 1)
         connection.set_temp(temp1123, 2)
     
     connection.set_enable(1, True)
-    connection.set_enable(2, True) #uncomment this line to enable the 1090
+    connection.set_enable(2, True) 
 
     
 
