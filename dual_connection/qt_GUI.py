@@ -101,7 +101,7 @@ class GUI(QtWidgets.QWidget):
         print(connection.set_enable(1, False))
         print(connection.set_enable(2, False))
         print("Pausing ramp..")
-        self.end_button.setText("Pause Ramp")
+        self.pause_button.setText("Pause Ramp")
 
         
 # End Function
