@@ -109,7 +109,7 @@ class tec_controller(object):
 
         if self.addresses[device_id][1] == 1123:
             port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[0])
-            port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[1])
+           # port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[1])
         else:
             #then the device is the 1090
             port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[0])
