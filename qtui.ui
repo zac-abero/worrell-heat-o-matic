@@ -23,6 +23,29 @@
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
+    <item row="1" column="2">
+     <spacer name="horizontalSpacer_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeType">
+       <enum>QSizePolicy::Fixed</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="2" column="1">
+     <widget class="QPushButton" name="end_button">
+      <property name="text">
+       <string>End program</string>
+      </property>
+     </widget>
+    </item>
     <item row="1" column="0">
      <spacer name="horizontalSpacer">
       <property name="orientation">
@@ -40,51 +63,28 @@
      </spacer>
     </item>
     <item row="0" column="1">
-     <widget class="QPushButton" name="pushButton">
+     <widget class="QPushButton" name="start_button">
       <property name="text">
-       <string>Start Ramp</string>
+       <string>Start</string>
       </property>
      </widget>
     </item>
     <item row="1" column="1">
-     <widget class="QPushButton" name="pushButton_2">
+     <widget class="QPushButton" name="pause_button">
       <property name="text">
        <string>Pause</string>
       </property>
      </widget>
-    </item>
-    <item row="2" column="1">
-     <widget class="QPushButton" name="pushButton_3">
-      <property name="text">
-       <string>End Ramp</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="2">
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Fixed</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
     </item>
    </layout>
   </widget>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>60</y>
+     <x>20</x>
+     <y>10</y>
      <width>321</width>
-     <height>101</height>
+     <height>151</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -98,7 +98,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit_4"/>
+       <widget class="QLineEdit" name="ch1temp"/>
       </item>
      </layout>
     </item>
@@ -112,7 +112,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit_5"/>
+       <widget class="QLineEdit" name="ch2temp"/>
       </item>
      </layout>
     </item>

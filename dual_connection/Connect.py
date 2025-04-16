@@ -131,17 +131,7 @@ class tec_controller(object):
         else:
             #then the device is the 1090
             print(port.set_parameter(parameter_id=3000, value=value, address= device_id, parameter_instance=self.channel[0]))
-
-        
-    
-    # def get_param(self, param_id):
-    #     try:
-    #         value = self.session().get_parameter(parameter_id=param_id, address=self.address, parameter_instance=self.channel[0])
-    #     except (ResponseException, WrongChecksum) as ex:
-    #         self.session().stop()
-    #         self.session = None
-    #     return value
-    
+            
 if __name__ == "__main__":    
 
     tecs = tec_controller()
