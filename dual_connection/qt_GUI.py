@@ -119,7 +119,7 @@ class GUI(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(5000, lambda: self.end_button.setDisabled(False))
         
 # instantiate a connection with the TECS (comment this out for GUI testing)
-connection = tec_controller() 
+#connection = tec_controller() 
 
 # GUI Main
 if __name__ == "__main__":
