@@ -105,5 +105,9 @@ class Ui_Main(object):
         self.label_5.setText(QCoreApplication.translate("Main", u"Channel 2 Temperature", None))
     # retranslateUi
 
+if __name__ == "__main__":
+    app = Ui_Main()
 
-
+    ramp_gui = Ui_Main()
+    app.exec()
+    
