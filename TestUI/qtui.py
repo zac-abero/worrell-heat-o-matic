@@ -11,7 +11,7 @@
 import sys
 import time
 from PySide6 import QtCore, QtWidgets, QtGui
-from Connect import tec_controller 
+#from Connect import tec_controller 
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
@@ -151,17 +151,10 @@ class Ui_Main(object):
         
         # query which device is connected to which id
         device1 = connection.get_device_type(1)
-        device2 = connection.get_device_type(2)
         
-        if device1== 1123:
-            connection.set_temp(temp1123_ch1, 1)
-            connection.set_temp(temp1123_ch1, 2) 
-        else:
-            connection.set_temp(temp1090, 1)
-            connection.set_temp(temp1123, 2)
+        connection.set_temp(temp1123_ch1, 1)
         
         connection.set_enable(1, True)
-        connection.set_enable(2, True) 
         
         # 5 second buffer applied to adjust 
         
@@ -173,7 +166,6 @@ class Ui_Main(object):
         self.sleep_button()
 
         print(connection.set_enable(1, False))
-        print(connection.set_enable(2, False))
         print("Pausing ramp..")
         self.pause_button.setText("Pause Ramp")
 
@@ -182,7 +174,6 @@ class Ui_Main(object):
     def end(self):
         self.end_button.setText("Ending Ramp..")
         print(connection.set_enable(1, False))
-        print(connection.set_enable(2, False))
         print("Ending ramp..")
         sys.exit(app.exec())
 

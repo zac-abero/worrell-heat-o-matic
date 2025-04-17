@@ -11,7 +11,7 @@ from qtui import Ui_Main
         
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
-        super().__init__() #alteration was to add super().init() for calling 
+        super().__init__() #alteration was to add super().init() for calling itself
         self.ui = Ui_Main()
         self.ui.setupUi(self)
         
