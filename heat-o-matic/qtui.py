@@ -11,7 +11,7 @@
 import sys
 import time
 from PySide6 import QtCore, QtWidgets, QtGui
-#from Connect import tec_controller 
+from Connect import tec_controller 
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
@@ -164,8 +164,8 @@ class Ui_Main(object):
     def pause(self):
         QtCore.QTimer.singleShot(5000, lambda: self.pause_button.setText("Pausing.."))
         self.sleep_button()
-
-        print(connection.set_enable(1, False))
+        if connect:
+            print(connection.set_enable(1, False))
         print("Pausing ramp..")
         self.pause_button.setText("Pause Ramp")
 
@@ -173,9 +173,13 @@ class Ui_Main(object):
 # End Function
     def end(self):
         self.end_button.setText("Ending Ramp..")
-        print(connection.set_enable(1, False))
-        print("Ending ramp..")
-        sys.exit(app.exec())
+        
+        try: 
+            print(connection.set_enable(1, False))
+            print("Ending ramp..")
+            QApplication.exit()
+        except ConnectionError:
+            print("Could not connect to device!")
 
 
 # adapt this to input button names rather than target end button.
