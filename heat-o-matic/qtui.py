@@ -164,8 +164,7 @@ class Ui_Main(object):
     def pause(self):
         QtCore.QTimer.singleShot(5000, lambda: self.pause_button.setText("Pausing.."))
         self.sleep_button()
-        if connect:
-            print(connection.set_enable(1, False))
+        print(connection.set_enable(1, False))
         print("Pausing ramp..")
         self.pause_button.setText("Pause Ramp")
 
@@ -188,4 +187,4 @@ class Ui_Main(object):
         QtCore.QTimer.singleShot(5000, lambda: self.end_button.setDisabled(False))
         
 # instantiate a connection with the TECS (comment this out for GUI testing)
-#connection = tec_controller() 
+#connection = tec_controller()

@@ -38,8 +38,10 @@ class Ui_Dialog(object):
         self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        
+        
         self.radioRegularMode = QRadioButton(self.verticalLayoutWidget)
-        self.radioRegularMode.setObjectName(u"radioRegularMode")
+        self.radioRegularMode.setObjectName(u"radioRegularMode", )
 
         self.verticalLayout.addWidget(self.radioRegularMode)
 
@@ -47,6 +49,8 @@ class Ui_Dialog(object):
         self.radioTestingMode.setObjectName(u"radioTestingMode")
 
         self.verticalLayout.addWidget(self.radioTestingMode)
+        
+        self.radioRegularMode.setChecked(True)
 
         self.label = QLabel(Dialog)
         self.label.setObjectName(u"label")
@@ -54,8 +58,12 @@ class Ui_Dialog(object):
         self.label.setWordWrap(True)
 
         self.retranslateUi(Dialog)
-       # self.buttonBox.accepted.connect(Dialog.accept)
-       # self.buttonBox.rejected.connect(Dialog.reject)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
+        
+        self.radioTestingMode.toggled.connect(Dialog.boot_test)
+        self.radioRegularMode.toggled.connect(Dialog.boot_regular)
+
 
         QMetaObject.connectSlotsByName(Dialog)
     # setupUi
@@ -66,7 +74,5 @@ class Ui_Dialog(object):
         self.radioTestingMode.setText(QCoreApplication.translate("Dialog", u"Boot in Testing Mode (For UI purposes)", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"Hello! Welcome to the Heat-o-matic boot menu, please select which mode you would like to run.", None))
     # retranslateUi
-    
-    def accept():
-        print("oing")
 
+    
