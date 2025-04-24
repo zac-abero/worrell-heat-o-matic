@@ -114,6 +114,18 @@ class tec_controller(object):
             #then the device is the 1090
             port.set_parameter(value=value, parameter_name="Status", address=device_id, parameter_instance=self.channel[0])
 
+    def get_temp(self, value, device_id):
+        """
+        get object temperature of channel.
+        :param value: float
+        :param channel: int
+        :return:
+        """
+        port = self.addresses[device_id][0]
+        value = float(value)
+        print(f'setting temperature to {value}')
+        return port.get_parameter(parameter_id=3000, value=value, address= device_id, parameter_instance=self.channel[0])
+
 
     def set_temp(self, value, device_id):
         """
